@@ -18,6 +18,8 @@ public class AutomationExecutor {
     }
 
     public void tick(MinecraftClient client) {
+        if (client.player == null || client.world == null) return;
+
         switch (phase) {
             case WAIT_STAND -> {
                 int required = manager.getConfig().standTime * 20;
@@ -36,18 +38,25 @@ public class AutomationExecutor {
                 phase = Phase.SEND_COMMAND;
             }
             case SEND_COMMAND -> {
-                if (client.player != null && client.getNetworkHandler() != null) {
-                    // في إصدار 1.21.1 بنبعت الأمر من غير علامة الـ "/" في الأول
+                if (client.player != null && client.player.networkHandler != null) {
+                    // السعر من الإعدادات
                     String commandText = "ah sell " + manager.getConfig().price;
                     
-                    // تنفيذ الأمر على الـ Main Thread لضمان عدم حدوث تداخل في الـ Packets
-                    client.execute(() -> {
-                        client.getNetworkHandler().sendCommand(commandText);
-                    });
+                    // حفظ الـ networkHandler في متغير محلي ثابت للـ Lambda
+                    final var handler = client.player.networkHandler;
                     
+                    // التنفيذ الآمن على الـ Main Thread لتفادي الـ NoSuchMethodError والـ Desync
+                    client.execute(() -> {
+                        try {
+                            handler.sendCommand(commandText);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+
                     log(client, "Sell command sent: " + commandText);
                 }
-                
+
                 double min = manager.getConfig().minDelay;
                 double max = manager.getConfig().maxDelay;
                 targetDelayTicks = (int) ((ThreadLocalRandom.current().nextDouble(min, max)) * 20);
@@ -60,7 +69,9 @@ public class AutomationExecutor {
             }
             case CLICK_CONFIRM -> {
                 if (client.currentScreen instanceof GenericContainerScreen screen) {
-                    clickSlot(client, screen, manager.getConfig().confirmSlot);
+                    client.execute(() -> {
+                        clickSlot(client, screen, manager.getConfig().confirmSlot);
+                    });
                     log(client, "Confirm clicked (slot " + manager.getConfig().confirmSlot + ")");
                 } else {
                     log(client, "No container screen open.");
@@ -89,6 +100,8 @@ public class AutomationExecutor {
 
     private void clickSlot(MinecraftClient client, GenericContainerScreen screen, int slotIndex) {
         try {
+            if (client.interactionManager == null || client.player == null) return;
+            
             var handler = screen.getScreenHandler();
             if (slotIndex < 0 || slotIndex >= handler.slots.size()) return;
             
@@ -108,7 +121,7 @@ public class AutomationExecutor {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null) return;
         
-        client.executeSync(() -> {
+        client.execute(() -> {
             if (client.currentScreen instanceof ChatScreen || client.currentScreen instanceof GenericContainerScreen) {
                 client.setScreen(null);
             }
