@@ -5,5 +5,6 @@
   "player_radius": 20,
   "stand_time": 10,
   "click_x": 960,
-  "click_y": 540
+  "click_y": 540,
+  "confirm_slot": 16
 }
