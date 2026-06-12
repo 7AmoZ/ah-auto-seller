@@ -21,7 +21,7 @@ jobs:
         run: chmod +x fabric-mod/gradlew
         
       - name: Build with Gradle
-        run: cd fabric-mod && ./gradlew build --stacktrace
+        run: cd fabric-mod && ./gradlew build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
