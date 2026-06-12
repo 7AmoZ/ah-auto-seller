@@ -13,7 +13,9 @@ public class AutomationExecutor {
     private int delayTicks = 0;
     private int targetDelayTicks = 0;
 
-    public AutomationExecutor(StateManager manager) { this.manager = manager; }
+    public AutomationExecutor(StateManager manager) { 
+        this.manager = manager; 
+    }
 
     public void tick(MinecraftClient client) {
         switch (phase) {
@@ -35,8 +37,8 @@ public class AutomationExecutor {
             }
             case SEND_COMMAND -> {
                 if (client.player != null) {
-    client.player.chat("ah sell " + manager.getConfig().price);
-}
+                    client.player.chat("ah sell " + manager.getConfig().price);
+                }
                 log(client, "Sell command sent.");
                 double min = manager.getConfig().minDelay;
                 double max = manager.getConfig().maxDelay;
@@ -81,6 +83,7 @@ public class AutomationExecutor {
         try {
             var handler = screen.getScreenHandler();
             if (slotIndex < 0 || slotIndex >= handler.slots.size()) return;
+            
             client.interactionManager.clickSlot(
                 handler.syncId,
                 slotIndex,
@@ -96,18 +99,22 @@ public class AutomationExecutor {
     public void cleanup() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null) return;
+        
         client.executeSync(() -> {
             if (client.currentScreen instanceof ChatScreen || client.currentScreen instanceof GenericContainerScreen) {
                 client.setScreen(null);
             }
-            if (client.player != null && client.player.currentScreenHandler != null) {
+            if (client.player != null) {
                 client.player.closeHandledScreen();
             }
         });
         phase = Phase.WAIT_STAND;
     }
 
-    public void reset() { phase = Phase.WAIT_STAND; delayTicks = 0; }
+    public void reset() { 
+        phase = Phase.WAIT_STAND; 
+        delayTicks = 0; 
+    }
 
     private void log(MinecraftClient client, String msg) {
         SocketClient.sendEvent("{\"type\":\"LOG\",\"msg\":\"" + msg.replace("\"", "\\\"") + "\"}");
