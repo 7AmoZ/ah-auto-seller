@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "ahseller",
+  "version": "1.0.0",
+  "name": "AH Auto Seller",
+  "description": "Client-side auction house automation assistant",
+  "authors": ["You"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.ahseller.AHSellerMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": ">=1.21.0",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

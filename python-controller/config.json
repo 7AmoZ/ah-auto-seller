@@ -1,0 +1,9 @@
+{
+  "price": 2000,
+  "min_delay": 0.2,
+  "max_delay": 1.0,
+  "player_radius": 20,
+  "stand_time": 10,
+  "click_x": 960,
+  "click_y": 540
+}
