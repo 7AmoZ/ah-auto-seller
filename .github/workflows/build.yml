@@ -7,10 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    # إجبار استخدام Node.js 24 لتجنب تحذيرات الإيقاف
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +21,7 @@ jobs:
         run: chmod +x fabric-mod/gradlew
         
       - name: Build with Gradle
-        run: cd fabric-mod && ./gradlew build
+        run: cd fabric-mod && ./gradlew build --stacktrace
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
