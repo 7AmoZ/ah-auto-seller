@@ -36,12 +36,18 @@ public class AutomationExecutor {
                 phase = Phase.SEND_COMMAND;
             }
             case SEND_COMMAND -> {
-                if (client.player != null) {
-                    if (client.player != null) {
-    client.player.networkHandler.sendChatMessage("/ah sell " + manager.getConfig().price);
-}
+                if (client.player != null && client.getNetworkHandler() != null) {
+                    // في إصدار 1.21.1 بنبعت الأمر من غير علامة الـ "/" في الأول
+                    String commandText = "ah sell " + manager.getConfig().price;
+                    
+                    // تنفيذ الأمر على الـ Main Thread لضمان عدم حدوث تداخل في الـ Packets
+                    client.execute(() -> {
+                        client.getNetworkHandler().sendCommand(commandText);
+                    });
+                    
+                    log(client, "Sell command sent: " + commandText);
                 }
-                log(client, "Sell command sent.");
+                
                 double min = manager.getConfig().minDelay;
                 double max = manager.getConfig().maxDelay;
                 targetDelayTicks = (int) ((ThreadLocalRandom.current().nextDouble(min, max)) * 20);
