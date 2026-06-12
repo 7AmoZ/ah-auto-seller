@@ -9,7 +9,7 @@ class AHApp:
     def __init__(self, root):
         self.root = root
         self.root.title("AH Auto Seller")
-        self.root.geometry("420x580")
+        self.root.geometry("420x600")
         self.root.resizable(False, False)
 
         self.config_mgr = ConfigManager()
@@ -31,7 +31,8 @@ class AHApp:
         fields = [
             ("Sell Price:", "price"), ("Min Delay:", "min_delay"), ("Max Delay:", "max_delay"),
             ("Player Radius:", "player_radius"), ("Standing Time:", "stand_time"),
-            ("Click X:", "click_x"), ("Click Y:", "click_y"), ("Items Remaining:", "items")
+            ("Click X:", "click_x"), ("Click Y:", "click_y"), ("Confirm Slot:", "confirm_slot"), 
+            ("Items Remaining:", "items")
         ]
         self.entries = {}
         for i, (label, key) in enumerate(fields):
@@ -68,7 +69,8 @@ class AHApp:
                 "player_radius": float(self.entries["player_radius"].get()),
                 "stand_time": int(self.entries["stand_time"].get()),
                 "click_x": int(self.entries["click_x"].get()),
-                "click_y": int(self.entries["click_y"].get())
+                "click_y": int(self.entries["click_y"].get()),
+                "confirm_slot": int(self.entries["confirm_slot"].get())
             }
             self.config_mgr.save(new_cfg)
             self.socket.send({"type": "CONFIG", "data": new_cfg})
@@ -128,4 +130,4 @@ class AHApp:
 
     def on_close(self):
         self.socket.stop()
-        self.root.destroy() 
+        self.root.destroy()
