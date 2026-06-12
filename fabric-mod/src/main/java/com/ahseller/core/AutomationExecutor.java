@@ -37,7 +37,9 @@ public class AutomationExecutor {
             }
             case SEND_COMMAND -> {
                 if (client.player != null) {
-                    client.player.networkHandler.sendCommand("ah sell " + manager.getConfig().price);
+                    if (client.player != null) {
+    client.player.networkHandler.sendChatMessage("/ah sell " + manager.getConfig().price);
+}
                 }
                 log(client, "Sell command sent.");
                 double min = manager.getConfig().minDelay;
