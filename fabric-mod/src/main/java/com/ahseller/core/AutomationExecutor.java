@@ -51,12 +51,16 @@ public class AutomationExecutor {
                 if (delayTicks >= targetDelayTicks) phase = Phase.CLICK_CONFIRM;
             }
             case CLICK_CONFIRM -> {
-                clickScreen(client, manager.getConfig().clickX, manager.getConfig().clickY);
-                log(client, "Confirm clicked.");
-                phase = Phase.SCAN;
-                delayTicks = 0;
-                targetDelayTicks = 10;
-            }
+    if (client.currentScreen instanceof GenericContainerScreen screen) {
+        clickSlot(client, screen, manager.getConfig().confirmSlot);
+        log(client, "Confirm clicked (slot " + manager.getConfig().confirmSlot + ")");
+    } else {
+        log(client, "No container screen open.");
+    }
+    phase = Phase.SCAN;
+    delayTicks = 0;
+    targetDelayTicks = 10;
+}
             case SCAN -> {
                 delayTicks++;
                 if (delayTicks >= targetDelayTicks) {
@@ -71,16 +75,21 @@ public class AutomationExecutor {
                     phase = Phase.WAIT_STAND;
                     manager.getMovementTracker().reset();
                 }
-            }
-        }
+            private void clickSlot(MinecraftClient client, GenericContainerScreen screen, int slotIndex) {
+    try {
+        var handler = screen.getScreenHandler();
+        if (slotIndex < 0 || slotIndex >= handler.slots.size()) return;
+        client.interactionManager.clickSlot(
+            handler.syncId,
+            slotIndex,
+            0,
+            net.minecraft.screen.slot.SlotActionType.PICKUP,
+            client.player
+        );
+    } catch (Exception e) {
+        log(MinecraftClient.getInstance(), "Slot click failed: " + e.getMessage());
     }
-
-    private void clickScreen(MinecraftClient client, int x, int y) {
-        try {
-            Robot robot = new Robot();
-            robot.mouseMove(x, y);
-            robot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
-            robot.mouseRelease(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
+}
         } catch (Exception e) {
             log(client, "Click failed: " + e.getMessage());
         }
