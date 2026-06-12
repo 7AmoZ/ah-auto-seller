@@ -1,0 +1,30 @@
+name: Build Fabric Mod
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x fabric-mod/gradlew
+        
+      - name: Build with Gradle
+        run: cd fabric-mod && ./gradlew build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: AH-Auto-Seller-Mod
+          path: fabric-mod/build/libs/*.jar
