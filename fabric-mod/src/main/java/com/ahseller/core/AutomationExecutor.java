@@ -36,7 +36,9 @@ public class AutomationExecutor {
                 phase = Phase.SEND_COMMAND;
             }
             case SEND_COMMAND -> {
-                client.player.networkHandler.sendCommand("ah sell " + manager.getConfig().price);
+                client.getNetworkHandler().sendChatCommand(
+    "ah sell " + manager.getConfig().price
+);
                 log(client, "Sell command sent.");
                 double min = manager.getConfig().minDelay;
                 double max = manager.getConfig().maxDelay;
