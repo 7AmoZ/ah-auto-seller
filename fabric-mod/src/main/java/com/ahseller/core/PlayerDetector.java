@@ -18,4 +18,4 @@ public class PlayerDetector {
         
         return !client.world.getEntitiesByClass(PlayerEntity.class, box, p -> p != client.player).isEmpty();
     }
-}
+}                                            
