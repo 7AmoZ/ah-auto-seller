@@ -11,6 +11,7 @@ public class ModConfig {
     public int standTime = 10;
     public int clickX = 960;
     public int clickY = 540;
+    public int confirmSlot = 16;
 
     public void updateFromJson(String json) {
         try {
@@ -22,6 +23,7 @@ public class ModConfig {
             if (obj.has("stand_time")) standTime = obj.get("stand_time").getAsInt();
             if (obj.has("click_x")) clickX = obj.get("click_x").getAsInt();
             if (obj.has("click_y")) clickY = obj.get("click_y").getAsInt();
+            if (obj.has("confirm_slot")) confirmSlot = obj.get("confirm_slot").getAsInt();
         } catch (Exception e) {
             com.ahseller.AHSellerMod.LOGGER.warn("Failed to parse config: {}", e.getMessage());
         }
