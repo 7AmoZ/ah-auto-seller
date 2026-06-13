@@ -13,12 +13,22 @@ public class AutomationExecutor {
     private Phase phase = Phase.WAIT_STAND;
     private int delayTicks = 0;
     private int targetDelayTicks = 0;
+    private int lastSuccessfulMethodIndex = -1; // تتبع آخر طريقة نجحت
 
     public AutomationExecutor(StateManager manager) { 
         this.manager = manager; 
     }
 
     public void tick(MinecraftClient client) {
+        // ✅ التحقق: المود لا يعمل إلا لو البرنامج مفتوح
+        if (!SocketClient.isConnected()) {
+            if (phase != Phase.WAIT_STAND) {
+                log(client, "Disconnected from Python Controller. Stopping automation.");
+                phase = Phase.WAIT_STAND;
+            }
+            return;
+        }
+
         switch (phase) {
             case WAIT_STAND -> {
                 int required = manager.getConfig().standTime * 20;
@@ -38,7 +48,7 @@ public class AutomationExecutor {
             }
             case SEND_COMMAND -> {
                 if (client.player != null) {
-                    client.player.networkHandler.sendChatMessage("/ah sell " + manager.getConfig().price);
+                    sendCommandSafe(client);
                 }
                 log(client, "Sell command sent.");
                 double min = manager.getConfig().minDelay;
@@ -53,7 +63,7 @@ public class AutomationExecutor {
             }
             case CLICK_CONFIRM -> {
                 if (client.currentScreen instanceof GenericContainerScreen screen) {
-                    clickSlot(client, screen, manager.getConfig().confirmSlot);
+                    clickSlotSafe(client, screen, manager.getConfig().confirmSlot);
                     log(client, "Confirm clicked (slot " + manager.getConfig().confirmSlot + ")");
                 } else {
                     log(client, "No container screen open.");
@@ -80,38 +90,126 @@ public class AutomationExecutor {
         }
     }
 
-    private void clickSlot(MinecraftClient client, GenericContainerScreen screen, int slotIndex) {
+    // جرب جميع طرق إرسال الأمر
+    private void sendCommandSafe(MinecraftClient client) {
+        String command = "ah sell " + manager.getConfig().price;
+        
+        // لو معروفة آخر طريقة نجحت، ابدأ بيها
+        if (lastSuccessfulMethodIndex >= 0) {
+            if (tryMethod(client, command, lastSuccessfulMethodIndex)) {
+                return;
+            }
+        }
+        
+        // جرب جميع الطرق بالترتيب
+        for (int i = 0; i < 3; i++) {
+            if (i == lastSuccessfulMethodIndex) continue; // تخطي الطريقة المعروفة
+            if (tryMethod(client, command, i)) {
+                lastSuccessfulMethodIndex = i;
+                return;
+            }
+        }
+        
+        log(client, "Failed to send command with all methods!");
+    }
+
+    private boolean tryMethod(MinecraftClient client, String command, int methodIndex) {
+        try {
+            switch (methodIndex) {
+                case 0: // الطريقة الأولى: sendChatMessage مع /
+                    client.getNetworkHandler().sendChatMessage("/" + command);
+                    log(client, "Using method 1: sendChatMessage");
+                    return true;
+                    
+                case 1: // الطريقة الثانية: onSlotClick (لو كان GUI مفتوح)
+                    if (client.currentScreen instanceof GenericContainerScreen screen) {
+                        var handler = screen.getScreenHandler();
+                        handler.onSlotClick(0, 0, SlotActionType.PICKUP, client.player);
+                        log(client, "Using method 2: onSlotClick");
+                        return true;
+                    }
+                    return false;
+                    
+                case 2: // الطريقة الثالثة: محاولة executeCommand
+                    try {
+                        client.player.getCommandSource().getServer().getCommandManager()
+                            .execute(client.player.getCommandSource(), command);
+                        log(client, "Using method 3: executeCommand");
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
+            }
+        } catch (Exception e) {
+            log(client, "Method " + (methodIndex + 1) + " failed: " + e.getMessage());
+            return false;
+        }
+        return false;
+    }
+
+    // جرب جميع طرق الكليك
+    private void clickSlotSafe(MinecraftClient client, GenericContainerScreen screen, int slotIndex) {
+        // لو معروفة آخر طريقة نجحت، ابدأ بيها
+        if (lastSuccessfulMethodIndex >= 0) {
+            if (tryClickMethod(client, screen, slotIndex, lastSuccessfulMethodIndex)) {
+                return;
+            }
+        }
+        
+        // جرب جميع الطرق بالترتيب
+        for (int i = 0; i < 3; i++) {
+            if (i == lastSuccessfulMethodIndex) continue;
+            if (tryClickMethod(client, screen, slotIndex, i)) {
+                lastSuccessfulMethodIndex = i;
+                return;
+            }
+        }
+        
+        log(client, "Failed to click slot with all methods!");
+    }
+
+    private boolean tryClickMethod(MinecraftClient client, GenericContainerScreen screen, int slotIndex, int methodIndex) {
         try {
             var handler = screen.getScreenHandler();
             if (slotIndex < 0 || slotIndex >= handler.slots.size()) {
-                log(client, "Invalid slot: " + slotIndex);
-                return;
+                return false;
             }
-            
-            // محاولة الطريقة الحديثة أولاً (1.21.11)
-            try {
-                handler.onSlotClick(slotIndex, 0, SlotActionType.PICKUP, client.player);
-                return;
-            } catch (NoSuchMethodError e1) {
-                // إذا فشلت، حاول الطريقة القديمة
-                try {
-                    client.interactionManager.clickSlot(
-                        handler.syncId,
-                        slotIndex,
-                        0,
-                        SlotActionType.PICKUP,
-                        client.player
-                    );
-                    return;
-                } catch (NoSuchMethodError e2) {
-                    // إذا فشلت الاثنين، حاول إغلاق الشاشة
+
+            switch (methodIndex) {
+                case 0: // الطريقة الأولى: onSlotClick
+                    try {
+                        handler.onSlotClick(slotIndex, 0, SlotActionType.PICKUP, client.player);
+                        log(client, "Slot click method 1: onSlotClick");
+                        return true;
+                    } catch (NoSuchMethodError e) {
+                        return false;
+                    }
+                    
+                case 1: // الطريقة الثانية: clickSlot
+                    try {
+                        client.interactionManager.clickSlot(
+                            handler.syncId,
+                            slotIndex,
+                            0,
+                            SlotActionType.PICKUP,
+                            client.player
+                        );
+                        log(client, "Slot click method 2: clickSlot");
+                        return true;
+                    } catch (NoSuchMethodError e) {
+                        return false;
+                    }
+                    
+                case 2: // الطريقة الثالثة: إغلاق الشاشة
                     client.player.closeHandledScreen();
-                    log(client, "Closed screen instead.");
-                }
+                    log(client, "Slot click method 3: closeHandledScreen");
+                    return true;
             }
         } catch (Exception e) {
-            log(client, "Click error: " + e.getMessage());
+            log(client, "Click method " + (methodIndex + 1) + " failed: " + e.getMessage());
+            return false;
         }
+        return false;
     }
 
     public void cleanup() {
@@ -127,11 +225,13 @@ public class AutomationExecutor {
             }
         });
         phase = Phase.WAIT_STAND;
+        lastSuccessfulMethodIndex = -1;
     }
 
     public void reset() { 
         phase = Phase.WAIT_STAND; 
-        delayTicks = 0; 
+        delayTicks = 0;
+        lastSuccessfulMethodIndex = -1;
     }
 
     private void log(MinecraftClient client, String msg) {
