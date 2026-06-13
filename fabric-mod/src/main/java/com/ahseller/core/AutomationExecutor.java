@@ -117,9 +117,12 @@ public class AutomationExecutor {
         try {
             switch (methodIndex) {
                 case 0: // الطريقة الأولى: sendChatMessage مع /
-                    client.getNetworkHandler().sendChatMessage("/" + command);
-                    log(client, "Using method 1: sendChatMessage");
-                    return true;
+                    if (client.getNetworkHandler() != null) {
+                        client.getNetworkHandler().sendChatMessage("/" + command);
+                        log(client, "Using method 1: sendChatMessage");
+                        return true;
+                    }
+                    return false;
                     
                 case 1: // الطريقة الثانية: onSlotClick (لو كان GUI مفتوح)
                     if (client.currentScreen instanceof GenericContainerScreen screen) {
@@ -130,15 +133,14 @@ public class AutomationExecutor {
                     }
                     return false;
                     
-                case 2: // الطريقة الثالثة: محاولة executeCommand
-                    try {
-                        client.player.getCommandSource().getServer().getCommandManager()
-                            .execute(client.player.getCommandSource(), command);
-                        log(client, "Using method 3: executeCommand");
+                case 2: // الطريقة الثالثة: محاولة استدعاء الأمر عبر NetworkHandler
+                    if (client.getNetworkHandler() != null) {
+                        // إرسال الأمر بطريقة آمنة
+                        client.getNetworkHandler().sendChatMessage("/" + command);
+                        log(client, "Using method 3: fallback sendChatMessage");
                         return true;
-                    } catch (Exception e) {
-                        return false;
                     }
+                    return false;
             }
         } catch (Exception e) {
             log(client, "Method " + (methodIndex + 1) + " failed: " + e.getMessage());
@@ -187,23 +189,29 @@ public class AutomationExecutor {
                     
                 case 1: // الطريقة الثانية: clickSlot
                     try {
-                        client.interactionManager.clickSlot(
-                            handler.syncId,
-                            slotIndex,
-                            0,
-                            SlotActionType.PICKUP,
-                            client.player
-                        );
-                        log(client, "Slot click method 2: clickSlot");
-                        return true;
+                        if (client.interactionManager != null) {
+                            client.interactionManager.clickSlot(
+                                handler.syncId,
+                                slotIndex,
+                                0,
+                                SlotActionType.PICKUP,
+                                client.player
+                            );
+                            log(client, "Slot click method 2: clickSlot");
+                            return true;
+                        }
+                        return false;
                     } catch (NoSuchMethodError e) {
                         return false;
                     }
                     
                 case 2: // الطريقة الثالثة: إغلاق الشاشة
-                    client.player.closeHandledScreen();
-                    log(client, "Slot click method 3: closeHandledScreen");
-                    return true;
+                    if (client.player != null) {
+                        client.player.closeHandledScreen();
+                        log(client, "Slot click method 3: closeHandledScreen");
+                        return true;
+                    }
+                    return false;
             }
         } catch (Exception e) {
             log(client, "Click method " + (methodIndex + 1) + " failed: " + e.getMessage());
