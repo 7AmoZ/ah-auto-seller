@@ -59,6 +59,10 @@ public class SocketClient {
         });
     }
 
+    public static synchronized boolean isConnected() {
+        return socket != null && socket.isConnected() && out != null;
+    }
+
     public static synchronized void sendEvent(String json) {
         if (out != null) {
             out.println(json);
