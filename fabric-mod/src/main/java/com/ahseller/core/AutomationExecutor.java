@@ -4,6 +4,7 @@ import com.ahseller.network.SocketClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
+import net.minecraft.screen.slot.SlotActionType;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class AutomationExecutor {
@@ -18,8 +19,6 @@ public class AutomationExecutor {
     }
 
     public void tick(MinecraftClient client) {
-        if (client.player == null || client.world == null) return;
-
         switch (phase) {
             case WAIT_STAND -> {
                 int required = manager.getConfig().standTime * 20;
@@ -38,25 +37,10 @@ public class AutomationExecutor {
                 phase = Phase.SEND_COMMAND;
             }
             case SEND_COMMAND -> {
-                if (client.player != null && client.player.networkHandler != null) {
-                    // السعر من الإعدادات
-                    String commandText = "ah sell " + manager.getConfig().price;
-                    
-                    // حفظ الـ networkHandler في متغير محلي ثابت للـ Lambda
-                    final var handler = client.player.networkHandler;
-                    
-                    // التنفيذ الآمن على الـ Main Thread لتفادي الـ NoSuchMethodError والـ Desync
-                    client.execute(() -> {
-                        try {
-                            handler.sendCommand(commandText);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    });
-
-                    log(client, "Sell command sent: " + commandText);
+                if (client.player != null) {
+                    client.player.networkHandler.sendChatMessage("/ah sell " + manager.getConfig().price);
                 }
-
+                log(client, "Sell command sent.");
                 double min = manager.getConfig().minDelay;
                 double max = manager.getConfig().maxDelay;
                 targetDelayTicks = (int) ((ThreadLocalRandom.current().nextDouble(min, max)) * 20);
@@ -69,9 +53,7 @@ public class AutomationExecutor {
             }
             case CLICK_CONFIRM -> {
                 if (client.currentScreen instanceof GenericContainerScreen screen) {
-                    client.execute(() -> {
-                        clickSlot(client, screen, manager.getConfig().confirmSlot);
-                    });
+                    clickSlot(client, screen, manager.getConfig().confirmSlot);
                     log(client, "Confirm clicked (slot " + manager.getConfig().confirmSlot + ")");
                 } else {
                     log(client, "No container screen open.");
@@ -100,20 +82,35 @@ public class AutomationExecutor {
 
     private void clickSlot(MinecraftClient client, GenericContainerScreen screen, int slotIndex) {
         try {
-            if (client.interactionManager == null || client.player == null) return;
-            
             var handler = screen.getScreenHandler();
-            if (slotIndex < 0 || slotIndex >= handler.slots.size()) return;
+            if (slotIndex < 0 || slotIndex >= handler.slots.size()) {
+                log(client, "Invalid slot: " + slotIndex);
+                return;
+            }
             
-            client.interactionManager.clickSlot(
-                handler.syncId,
-                slotIndex,
-                0,
-                net.minecraft.screen.slot.SlotActionType.PICKUP,
-                client.player
-            );
+            // محاولة الطريقة الحديثة أولاً (1.21.11)
+            try {
+                handler.onSlotClick(slotIndex, 0, SlotActionType.PICKUP, client.player);
+                return;
+            } catch (NoSuchMethodError e1) {
+                // إذا فشلت، حاول الطريقة القديمة
+                try {
+                    client.interactionManager.clickSlot(
+                        handler.syncId,
+                        slotIndex,
+                        0,
+                        SlotActionType.PICKUP,
+                        client.player
+                    );
+                    return;
+                } catch (NoSuchMethodError e2) {
+                    // إذا فشلت الاثنين، حاول إغلاق الشاشة
+                    client.player.closeHandledScreen();
+                    log(client, "Closed screen instead.");
+                }
+            }
         } catch (Exception e) {
-            log(MinecraftClient.getInstance(), "Slot click failed: " + e.getMessage());
+            log(client, "Click error: " + e.getMessage());
         }
     }
 
@@ -121,7 +118,7 @@ public class AutomationExecutor {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null) return;
         
-        client.execute(() -> {
+        client.executeSync(() -> {
             if (client.currentScreen instanceof ChatScreen || client.currentScreen instanceof GenericContainerScreen) {
                 client.setScreen(null);
             }
